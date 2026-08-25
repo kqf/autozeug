@@ -1,7 +1,7 @@
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional
 
 import click
 
@@ -34,7 +34,7 @@ class MediaPost:
     name: str
     full_name: str
     caption: str = ""
-    media: Optional[Path] = None
+    media: Path | None = None
 
     def __post_init__(self):
         self.caption = f"**{self.name}**\n{clean_caption(self.caption)}"
@@ -85,9 +85,9 @@ def is_ignored_file(f: Path) -> bool:
     return f.suffix.lower() in (".docx", ".DS_Store")
 
 
-def collect_subfolders(root: Path) -> List[Path]:
+def collect_subfolders(root: Path) -> list[Path]:
     stack = [root]
-    folders: List[Path] = []
+    folders: list[Path] = []
 
     while stack:
         folder = stack.pop()
@@ -107,7 +107,7 @@ def process_folder(
     is_media: Callable[[Path], bool] = is_media_file,
     is_text: Callable[[Path], bool] = is_description_file,
     is_ignore: Callable[[Path], bool] = is_ignored_file,
-) -> List[MediaPost]:
+) -> list[MediaPost]:
     prefix = f"{parent_name} / {folder.name}" if parent_name else folder.name
     files = sorted(
         [f for f in folder.iterdir() if f.is_file() and not is_ignore(f)],
@@ -135,8 +135,8 @@ def process_folder(
     ]
 
 
-def prepare_posts(root: Path) -> List[MediaPost]:
-    posts: List[MediaPost] = []
+def prepare_posts(root: Path) -> list[MediaPost]:
+    posts: list[MediaPost] = []
     folders = collect_subfolders(root)
     for folder in folders:
         parent = str(folder.parent.relative_to(root)) if folder != root else ""

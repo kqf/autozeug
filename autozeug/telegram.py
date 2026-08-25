@@ -1,10 +1,11 @@
 import asyncio
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from dataclasses_json import dataclass_json
 from environs import env
@@ -89,7 +90,7 @@ def save_posts(filename: Path, posts: list[Post]) -> None:
 
 
 def load_posts(filename: Path) -> list[Post]:
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
         data = json.load(f)
     return [Post.from_dict(item) for item in data]  # type: ignore
 
