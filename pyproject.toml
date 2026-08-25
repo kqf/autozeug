@@ -10,28 +10,36 @@ skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
 extend-select = [
-    "E", # pycodestyle
-    "F", # pyflakes
-    "I", # isort
-    # "UP",  # pyupgrade
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
     # "B",   # bugbear
     # "C90", # mccabe
     # "D",  # pydocstyle
-    "ERA", # eradicate
+    "ERA",  # eradicate
 ]
 ignore = [
     "E203",
+    "B008", # Do not perform function call
+    "RUF009", # Don not perform partials
     # "W503",
 ]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 
-
 [tool.mypy]
 python_version = "3.10"
 strict = false
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=autozeug --cov-report=term-missing"
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "routine-automation-tools"
@@ -39,7 +47,7 @@ version = "0.1.0"
 description = "my-os-tools"
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 dependencies = [
     "click>=8.0",
@@ -58,6 +66,5 @@ dependencies = [
 [project.scripts]
 sanitize-filenames = "autozeug.sanitizing:main"
 
-[build-system]
-requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+include = ["autozeug*"]
