@@ -1,3 +1,4 @@
 pre-commit
+pyright[nodejs]
 pytest
 pytest-cov
