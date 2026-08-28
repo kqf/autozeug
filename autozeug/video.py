@@ -4,15 +4,10 @@ from pathlib import Path
 from typing import Optional
 
 import cv2
-import ffmpeg
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
 logger = logging.getLogger(__name__)
-
-
-def _to_stream(probe):
-    return next(s for s in probe["streams"] if s["codec_type"] == "video")
 
 
 @dataclass
@@ -25,14 +20,19 @@ class VideoMetadata:
 def extract_metadata(video: Path) -> Optional[VideoMetadata]:
     if video.suffix.lower() != ".mp4":
         return None
-    probe = ffmpeg.probe(video)
-    video_stream = _to_stream(probe)
 
-    width = video_stream["width"]
-    height = video_stream["height"]
-    # Duration is often in seconds as a string, e.g., '123.456'
-    duration = float(probe["format"]["duration"])
-    return VideoMetadata(width, height, duration)
+    cap = cv2.VideoCapture(str(video))
+    try:
+        if not cap.isOpened():
+            return None
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    finally:
+        cap.release()
+
+    return VideoMetadata(width, height, frames / fps) if fps else None
 
 
 def is_readable(video):
