@@ -5,8 +5,8 @@ from typing import Optional
 
 import cv2
 import ffmpeg
-import yt_dlp
 from yt_dlp import YoutubeDL
+from yt_dlp.utils import DownloadError
 
 logger = logging.getLogger(__name__)
 
@@ -71,5 +71,5 @@ def download_from_youtube(video: Path, url: str):
     try:
         with YoutubeDL(ydl_opts) as ydl:  # type: ignore
             ydl.download([url])
-    except yt_dlp.utils.DownloadError:
+    except DownloadError:
         logger.error(f"Failed to download {video} at {url}")
