@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import cv2
 from yt_dlp import YoutubeDL
@@ -17,7 +16,7 @@ class VideoMetadata:
     duration: float
 
 
-def extract_metadata(video: Path) -> Optional[VideoMetadata]:
+def extract_metadata(video: Path) -> VideoMetadata | None:
     if video.suffix.lower() != ".mp4":
         return None
 
