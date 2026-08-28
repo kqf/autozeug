@@ -1,9 +1,13 @@
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
 import ffmpeg
 from yt_dlp import YoutubeDL
+from yt_dlp.utils import DownloadError
+
+logger = logging.getLogger(__name__)
 
 
 def _to_stream(probe):
@@ -63,5 +67,8 @@ def download_from_youtube(video: Path, url: str):
         "noprogress": False,
     }
 
-    with YoutubeDL(ydl_opts) as ydl:  # type: ignore
-        ydl.download([url])
+    try:
+        with YoutubeDL(ydl_opts) as ydl:  # type: ignore
+            ydl.download([url])
+    except DownloadError:
+        logger.error(f"Failed to download {video} at {url}")
