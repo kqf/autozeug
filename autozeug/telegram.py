@@ -164,6 +164,6 @@ def push(
                     await post.upload(client, entity)
                     logger.info(f"Uploaded: {post}")
                 except Exception as e:
-                    logger.error(f"Push failed {post}: {e}", exc_info=True)
+                    logger.exception(f"Push failed {post}: {e}", exc_info=True)
 
     asyncio.run(main())
