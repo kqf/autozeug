@@ -1,4 +1,6 @@
 import logging
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,22 +18,28 @@ class VideoMetadata:
     duration: float
 
 
+@contextmanager
+def capture(video: Path) -> Generator[cv2.VideoCapture, None, None]:
+    cap = cv2.VideoCapture(str(video))
+    with suppress(Exception):
+        yield cap
+    cap.release()
+
+
 def extract_metadata(video: Path) -> VideoMetadata | None:
     if video.suffix.lower() != ".mp4":
         return None
 
-    cap = cv2.VideoCapture(str(video))
-    try:
+    with capture(video) as cap:
         if not cap.isOpened():
             return None
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    finally:
-        cap.release()
 
-    return VideoMetadata(width, height, frames / fps) if fps else None
+        return VideoMetadata(
+            int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS),
+        )
+    return None
 
 
 def is_readable(video):
