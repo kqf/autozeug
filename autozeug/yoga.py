@@ -83,9 +83,10 @@ def dowload_videos(posts: dict[str, VideoPost]):
 
 @click.command()
 @click.option("--dry-run/--no-dry-run", default=False, help="Do not push")
-def main(dry_run: bool):
+@click.option("--max-posts", type=int, default=100, help="Counting backwards")
+def main(dry_run: bool, max_posts: int):
     config = load_config()
-    cachefile = pull(builder=PostBuilder(), config=config)
+    cachefile = pull(builder=PostBuilder(), config=config, limit=max_posts)
     original = load_posts(cachefile)
     posts = extract_posts(original, cachefile.with_suffix(""))
     dowload_videos(posts)
