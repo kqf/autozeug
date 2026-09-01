@@ -69,7 +69,13 @@ def download_from_youtube(video: Path, url: str):
     video.parent.mkdir(parents=True, exist_ok=True)
 
     ydl_opts = {
-        "format": "mp4[height=360]",  # same as -f "mp4[height=360]"
+        "format": (
+            "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]"
+            "/best[height<=360][ext=mp4]"
+            "/best[height<=360]"
+            "/best"
+        ),
+        "merge_output_format": "mp4",
         "outtmpl": str(video),  # same as -o <path>
         "quiet": False,  # show progress (optional)
         "noprogress": False,
