@@ -5,3 +5,4 @@ __pycache__
 .env
 *.session
 .vscode
+.DS_Store
