@@ -174,6 +174,7 @@ def push(
             entity = await resolve_channel(client, config.out_channel_name)
             for post in posts:
                 if not post.valid():
+                    logger.warning(f"Nothing to upload, skipping {post}")
                     continue
 
                 if dry_run:
