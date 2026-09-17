@@ -3,7 +3,6 @@ import json
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -62,13 +61,20 @@ class TelegramConfig:
     out_channel_name: str
 
 
-def load_config() -> TelegramConfig:
+def load_config(
+    channel: str = "CHANNEL_NAME",
+    out_channel: str = "OUT_CHANNEL_NAME",
+) -> TelegramConfig:
     env.read_env()
+    print(
+        "~>",
+        env(channel),
+    )
     return TelegramConfig(
         api_id=env.int("TELEGRAM_API_ID"),
         api_hash=env("TELEGRAM_API_HASH"),
-        channel_name=env("CHANNEL_NAME"),
-        out_channel_name=env("OUT_CHANNEL_NAME"),
+        channel_name=env(channel),
+        out_channel_name=env(out_channel),
     )
 
 
@@ -89,31 +95,40 @@ def save_posts(filename: Path, posts: list[Post]) -> None:
         )
 
 
-def load_posts(filename: Path) -> list[Post]:
+def load_posts(filename: Path, cls: type = Post) -> list:
     with open(filename, encoding="utf-8") as f:
         data = json.load(f)
-    return [Post.from_dict(item) for item in data]  # type: ignore
+    return [cls.from_dict(item) for item in data]  # type: ignore
+
+
+def ofile_for(messages: list) -> Path:
+    if not messages:
+        raise RuntimeError("No posts to save")
+    return Path(messages[0].date.strftime("%d-%m-%Y.json"))
 
 
 class PostBuilder:
     def valid(self, message) -> bool:
         return message.message and "youtube" in message.message
 
-    def build(self, message) -> Post:
+    async def build(self, message, number: int, root: Path) -> Post:
         return Post(
             date=message.date.isoformat(),
             text=message.message.strip(),
         )
 
-    def ofile(self, posts: list[Post]) -> Path:
-        if not posts:
-            raise RuntimeError("No posts to save")
-        dt = datetime.fromisoformat(posts[0].date)
-        return Path(dt.strftime("%d-%m-%Y.json"))
+    def ofile(self, messages: list) -> Path:
+        return ofile_for(messages)
+
+
+class Builder(Protocol):
+    def valid(self, message) -> bool: ...
+    def ofile(self, messages: list) -> Path: ...
+    async def build(self, message, number: int, root: Path): ...
 
 
 def pull(
-    builder: PostBuilder,
+    builder: Builder,
     config: TelegramConfig,
     limit: int = 100,
 ) -> Path:
@@ -126,13 +141,18 @@ def pull(
             async for message in client.iter_messages(entity, limit=limit):
                 if not builder.valid(message):
                     continue
-                messages.append(builder.build(message))
+                messages.append(message)
 
             # Restore the chronological order
             messages = messages[::-1]
             ofile = builder.ofile(messages)
-            save_posts(ofile, messages)
-            logger.info(f"Saved {len(messages)} text posts to '{ofile}'")
+            root = ofile.with_suffix("")
+            posts = [
+                await builder.build(message, number, root)
+                for number, message in enumerate(messages, start=1)
+            ]
+            save_posts(ofile, posts)
+            logger.info(f"Saved {len(posts)} posts to '{ofile}'")
         return ofile
 
     return asyncio.run(main())
