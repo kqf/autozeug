@@ -7,8 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import click
-from telethon import TelegramClient as TC
-from telethon import events
+from telethon import TelegramClient as TC, events
 from telethon.errors import ChatForwardsRestrictedError, FloodWaitError
 from telethon.helpers import add_surrogate
 from telethon.tl.types import MessageEntityCustomEmoji, MessageMediaWebPage
@@ -74,9 +73,7 @@ async def show_dialogs(client) -> None:
             continue
         entity = dialog.entity
         dead = " migrated" if getattr(entity, "migrated_to", None) else ""
-        click.echo(
-            f"{dialog.name!r:<44} {dialog.id:>15} {kind(entity)}{dead}"
-        )
+        click.echo(f"{dialog.name!r:<44} {dialog.id:>15} {kind(entity)}{dead}")
 
 
 def topic_of(message) -> int:
