@@ -138,7 +138,9 @@ def rich_text(text) -> str:
         return f'<a href="{escape(text.url)}">{rich_text(text.text)}</a>'
 
     if name == "TextEmail":
-        return f'<a href="mailto:{escape(text.email)}">{rich_text(text.text)}</a>'
+        return (
+            f'<a href="mailto:{escape(text.email)}">{rich_text(text.text)}</a>'
+        )
 
     if tag := TEXT_TAGS.get(name):
         return f"<{tag}>{rich_text(text.text)}</{tag}>"
@@ -186,7 +188,11 @@ def rich_block(block) -> str:
 
     if blocks := getattr(block, "blocks", None):
         inner = "\n\n".join(rich_block(block) for block in blocks)
-        return f"<blockquote>{inner}</blockquote>" if "Blockquote" in name else inner
+        return (
+            f"<blockquote>{inner}</blockquote>"
+            if "Blockquote" in name
+            else inner
+        )
 
     if text := getattr(block, "text", None):
         logger.warning(f"Unsupported rich block {name}, keeping its text")
@@ -214,7 +220,9 @@ async def download_rich(message, rich, folder: Path) -> list[str]:
         paths.append(str(ofile))
 
     if rich.documents:
-        logger.warning(f"Dropping {len(rich.documents)} documents of a rich message")
+        logger.warning(
+            f"Dropping {len(rich.documents)} documents of a rich message"
+        )
     return paths
 
 
@@ -259,11 +267,17 @@ def save_text(folder: Path, post: MediaPost) -> None:
 
 class MediaPostBuilder:
     def valid(self, message) -> bool:
-        if message.message or message.media or getattr(message, "rich_message", None):
+        if (
+            message.message
+            or message.media
+            or getattr(message, "rich_message", None)
+        ):
             return True
 
         if action := getattr(message, "action", None):
-            logger.info(f"Skipping service {message.id}: {type(action).__name__}")
+            logger.info(
+                f"Skipping service {message.id}: {type(action).__name__}"
+            )
         else:
             logger.warning(f"Skipping empty {message.id} of {message.date}")
         return False
