@@ -208,7 +208,7 @@ def rich_html(rich) -> str:
 
 
 async def download_rich(message, rich, folder: Path) -> list[str]:
-    paths = []
+    paths: list[str] = []
     for photo in rich.photos:
         ofile = folder / f"rich{len(paths)}.jpg"
         if not (ofile.exists() and ofile.stat().st_size):
