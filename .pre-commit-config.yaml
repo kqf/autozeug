@@ -30,3 +30,4 @@ repos:
     hooks:
       - id: pyright
         language: system
+        entry: env PYRIGHT_PYTHON_IGNORE_WARNINGS=1 pyright
