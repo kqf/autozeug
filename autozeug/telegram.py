@@ -4,12 +4,13 @@ import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from dataclasses_json import dataclass_json
 from environs import env
 from telethon import TelegramClient as TC
 from telethon.tl.types import DocumentAttributeVideo
+from telethon.utils import get_extension
 
 from autozeug.video import extract_metadata
 
@@ -51,6 +52,56 @@ async def upload_video(client, entity, media, caption):
         caption=caption,
         **video_attributes(media),
     )
+
+
+async def download_photos(message, rich, folder: Path) -> list[Path]:
+    paths: list[Path] = []
+    for photo in rich.photos:
+        ofile = folder / f"rich{len(paths)}.jpg"
+        if not (ofile.exists() and ofile.stat().st_size):
+            folder.mkdir(parents=True, exist_ok=True)
+            if not await message.client.download_media(photo, file=str(ofile)):
+                logger.error(f"Failed to download '{ofile}'")
+                continue
+
+        paths.append(ofile)
+
+    if rich.documents:
+        logger.warning(
+            f"Dropping {len(rich.documents)} documents of a rich message"
+        )
+    return paths
+
+
+async def download_media(message, folder: Path) -> Path | None:
+    if not (suffix := get_extension(message.media)):
+        logger.info(f"Nothing to download for '{folder}'")
+        return None
+
+    ofile = folder / f"media{suffix}"
+    if ofile.exists() and ofile.stat().st_size:
+        logger.info(f"Reusing '{ofile}'")
+        return ofile
+
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        saved = await message.download_media(file=str(ofile))
+    except Exception as e:
+        logger.exception(f"Failed to download '{ofile}': {e}", exc_info=True)
+        return None
+    return Path(saved) if saved else None
+
+
+async def download_all(message, folder: Path) -> list[Path]:
+    """Every file of a message: the rich photos first, then its own media."""
+    paths: list[Path] = []
+    if rich := getattr(message, "rich_message", None):
+        paths.extend(await download_photos(message, rich, folder))
+
+    if message.media is not None:
+        if media := await download_media(message, folder):
+            paths.append(media)
+    return paths
 
 
 @dataclass
@@ -111,7 +162,13 @@ class PostBuilder:
     def valid(self, message) -> bool:
         return message.message and "youtube" in message.message
 
-    async def build(self, message, number: int, root: Path) -> Post:
+    def build(
+        self,
+        message,
+        number: int,
+        folder: Path,
+        media: list[Path],
+    ) -> Post:
         return Post(
             date=message.date.isoformat(),
             text=message.message.strip(),
@@ -124,7 +181,13 @@ class PostBuilder:
 class Builder(Protocol):
     def valid(self, message) -> bool: ...
     def ofile(self, messages: list) -> Path: ...
-    async def build(self, message, number: int, root: Path): ...
+    def build(
+        self,
+        message,
+        number: int,
+        folder: Path,
+        media: list[Path],
+    ) -> Any: ...
 
 
 def pull(
@@ -147,10 +210,11 @@ def pull(
             messages = messages[::-1]
             ofile = builder.ofile(messages)
             root = ofile.with_suffix("")
-            posts = [
-                await builder.build(message, number, root)
-                for number, message in enumerate(messages, start=1)
-            ]
+            posts = []
+            for number, message in enumerate(messages, start=1):
+                folder = root / f"{number:04d}"
+                media = await download_all(message, folder)
+                posts.append(builder.build(message, number, folder, media))
             save_posts(ofile, posts)
             logger.info(f"Saved {len(posts)} posts to '{ofile}'")
         return ofile

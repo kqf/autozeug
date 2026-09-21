@@ -10,7 +10,6 @@ from dataclasses_json import dataclass_json
 from telethon.extensions import html as tghtml
 from telethon.helpers import add_surrogate, del_surrogate, strip_text
 from telethon.tl.types import MessageEntityCustomEmoji
-from telethon.utils import get_extension
 
 from autozeug.telegram import load_config, load_posts, ofile_for, pull, push
 
@@ -207,25 +206,6 @@ def rich_html(rich) -> str:
     return "\n\n".join(block for block in blocks if block)
 
 
-async def download_rich(message, rich, folder: Path) -> list[str]:
-    paths: list[str] = []
-    for photo in rich.photos:
-        ofile = folder / f"rich{len(paths)}.jpg"
-        if not (ofile.exists() and ofile.stat().st_size):
-            folder.mkdir(parents=True, exist_ok=True)
-            if not await message.client.download_media(photo, file=str(ofile)):
-                logger.error(f"Failed to download '{ofile}'")
-                continue
-
-        paths.append(str(ofile))
-
-    if rich.documents:
-        logger.warning(
-            f"Dropping {len(rich.documents)} documents of a rich message"
-        )
-    return paths
-
-
 def as_html(message) -> str:
     # Custom emoji can only be sent from a premium account, keep the plain
     # fallback character instead.
@@ -235,25 +215,6 @@ def as_html(message) -> str:
         if not isinstance(entity, MessageEntityCustomEmoji)
     ]
     return tghtml.unparse(message.message or "", entities).strip()
-
-
-async def download_media(message, folder: Path) -> Path | None:
-    if not (suffix := get_extension(message.media)):
-        logger.info(f"Nothing to download for '{folder}'")
-        return None
-
-    ofile = folder / f"media{suffix}"
-    if ofile.exists() and ofile.stat().st_size:
-        logger.info(f"Reusing '{ofile}'")
-        return ofile
-
-    folder.mkdir(parents=True, exist_ok=True)
-    try:
-        saved = await message.download_media(file=str(ofile))
-    except Exception as e:
-        logger.exception(f"Failed to download '{ofile}': {e}", exc_info=True)
-        return None
-    return Path(saved) if saved else None
 
 
 def save_text(folder: Path, post: MediaPost) -> None:
@@ -285,21 +246,22 @@ class MediaPostBuilder:
     def ofile(self, messages: list) -> Path:
         return ofile_for(messages)
 
-    async def build(self, message, number: int, root: Path) -> MediaPost:
-        folder = root / f"{number:04d}"
+    def build(
+        self,
+        message,
+        number: int,
+        folder: Path,
+        media: list[Path],
+    ) -> MediaPost:
         post = MediaPost(
             number=number,
             date=message.date.isoformat(),
             text=as_html(message),
+            media=[str(path) for path in media],
             parse_mode=HTML,
         )
         if rich := getattr(message, "rich_message", None):
             post.text = rich_html(rich)
-            post.media.extend(await download_rich(message, rich, folder))
-
-        if message.media is not None:
-            if media := await download_media(message, folder):
-                post.media.append(str(media))
         save_text(folder, post)
         return post
 
